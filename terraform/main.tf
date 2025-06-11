@@ -28,6 +28,16 @@ resource "aws_subnet" "public_subnet_1" {
   }
 }
 
+resource "aws_subnet" "public_subnet_2" {
+  vpc_id            = aws_vpc.strapi_vpc.id
+  cidr_block        = "10.0.2.0/24"
+  availability_zone = "us-east-1b" # IMPORTANTE: Uma AZ diferente da public_subnet_1
+  map_public_ip_on_launch = true
+  tags = {
+    Name = "strapi-public-subnet-2"
+  }
+}
+
 resource "aws_internet_gateway" "strapi_igw" {
   vpc_id = aws_vpc.strapi_vpc.id
   tags = {
@@ -50,6 +60,12 @@ resource "aws_route_table_association" "strapi_public_rta_1" {
   subnet_id      = aws_subnet.public_subnet_1.id
   route_table_id = aws_route_table.strapi_public_rt.id
 }
+
+resource "aws_route_table_association" "strapi_public_rta_2" {
+  subnet_id      = aws_subnet.public_subnet_2.id
+  route_table_id = aws_route_table.strapi_public_rt.id
+}
+
 
 # ------------------------------------------------------------------------------------------------
 # Security Groups
@@ -151,14 +167,8 @@ resource "aws_iam_role" "ecs_task_role" {
   })
 }
 
-# Opcional: Adicionar políticas para acesso a S3, RDS, etc., se o Strapi precisar.
-# resource "aws_iam_role_policy_attachment" "ecs_task_role_policy_s3" {
-#   role       = aws_iam_role.ecs_task_role.name
-#   policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-# }
-
 # ------------------------------------------------------------------------------------------------
-# ECS Cluster (você já tinha este)
+# ECS Cluster
 # ------------------------------------------------------------------------------------------------
 
 resource "aws_ecs_cluster" "strapi_cluster" {
@@ -179,7 +189,7 @@ resource "aws_ecs_task_definition" "strapi_task" {
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn            = aws_iam_role.ecs_task_role.arn # Usado se seu app precisa acessar outros serviços da AWS
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([
     {
@@ -205,7 +215,6 @@ resource "aws_ecs_task_definition" "strapi_task" {
       }
       environment = [
         # Exemplo de variáveis de ambiente para Strapi, se necessário
-        # Lembre-se que o SQLite fica em .tmp/db.
         # { name = "DATABASE_CLIENT", value = "sqlite" },
         # { name = "DATABASE_FILENAME", value = ".tmp/data.db" },
         # { name = "APP_KEYS", value = "algumsegredo" } # Substitua por segredo real em produção
@@ -230,7 +239,7 @@ resource "aws_ecs_service" "strapi_service" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets         = [aws_subnet.public_subnet_1.id]
+    subnets         = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id] # Referencia as duas subnets
     security_groups = [aws_security_group.strapi_ecs_sg.id]
     assign_public_ip = true
   }
@@ -241,7 +250,7 @@ resource "aws_ecs_service" "strapi_service" {
     container_port   = 1337
   }
 
-  depends_on = [aws_lb_listener.strapi_http_listener] # Garante que o Listener exista antes do serviço
+  depends_on = [aws_lb_listener.strapi_http_listener]
 
   tags = {
     Name = "strapi-service"
@@ -257,9 +266,9 @@ resource "aws_lb" "strapi_alb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.strapi_alb_sg.id]
-  subnets            = [aws_subnet.public_subnet_1.id]
+  subnets            = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id] # Referencia as duas subnets
 
-  enable_deletion_protection = false # Altere para true em produção
+  enable_deletion_protection = false
 
   tags = {
     Name = "strapi-alb"
@@ -299,27 +308,13 @@ resource "aws_lb_listener" "strapi_http_listener" {
   }
 }
 
-# Opcional: Listener HTTPS com certificado SSL (requer um certificado no ACM)
-# resource "aws_lb_listener" "strapi_https_listener" {
-#   load_balancer_arn = aws_lb.strapi_alb.arn
-#   port              = 443
-#   protocol          = "HTTPS"
-#   ssl_policy        = "ELBSecurityPolicy-2016-08"
-#   certificate_arn   = "arn:aws:acm:us-east-1:YOUR_ACCOUNT_ID:certificate/YOUR_CERTIFICATE_ID" # Substitua pelo seu ARN do certificado
-
-#   default_action {
-#     type             = "forward"
-#     target_group_arn = aws_lb_target_group.strapi_tg.arn
-#   }
-# }
-
 # ------------------------------------------------------------------------------------------------
 # CloudWatch Logs
 # ------------------------------------------------------------------------------------------------
 
 resource "aws_cloudwatch_log_group" "strapi_logs" {
   name              = "/ecs/strapi"
-  retention_in_days = 7 # Dias para manter os logs
+  retention_in_days = 7
 
   tags = {
     Name = "strapi-log-group"
