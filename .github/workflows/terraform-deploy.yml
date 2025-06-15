@@ -3,7 +3,7 @@ name: Deploy HTML com Terraform para AWS ECS
 on:
   push:
     branches:
-      - master
+      - master #
 
 jobs:
   deploy_with_terraform:
