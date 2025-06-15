@@ -22,7 +22,14 @@ jobs:
       run: docker build -t strapi-cms-test:${{ github.sha }} .
 
     - name: Run Strapi Docker container
-      run: docker run -p 1337:1337 --name strapi-test -d strapi-cms-test:${{ github.sha }}
+      run: |
+        docker run -p 1337:1337 --name strapi-test -d \
+          -e NODE_ENV=test \
+          -e ADMIN_JWT_SECRET="umSegredoAdminSuperSecretoParaTestes" \
+          -e API_TOKEN_SALT="umSaltDeApiTokenMuitoSecretoParaTestes" \
+          -e TRANSFER_TOKEN_SALT="umSaltDeTransferTokenSecretoParaTestes" \
+          -e APP_KEYS="umAppKeyParaTestes,outroAppKeyParaTestes" \
+          strapi-cms-test:${{ github.sha }}
 
     - name: Wait for Strapi to be ready
       run: |
@@ -36,6 +43,9 @@ jobs:
           sleep 5
         done
         echo "Strapi API did not become ready in time."
+        echo "--- Strapi Container Logs ---"
+        docker logs strapi-test
+        echo "--- Fim dos Logs ---"
         exit 1
 
     - name: Run Playwright tests
