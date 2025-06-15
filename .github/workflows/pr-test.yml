@@ -21,16 +21,32 @@
         - name: Build Strapi Docker image for testing
           run: docker build -t strapi-cms-test:${{ github.sha }} .
 
-        - name: Run Strapi Docker container
+        - name: Run Strapi Docker container and check status
           run: |
-            docker run -p 1337:1337 --name strapi-test -d \
+            set -e # Sai imediatamente se um comando falhar
+            # Inicia o container Strapi em modo detached e captura o ID.
+            CONTAINER_ID=$(docker run -p 1337:1337 --name strapi-test -d \
               -e NODE_ENV=test \
               -e ADMIN_JWT_SECRET="umSegredoAdminSuperSecretoParaTestes" \
               -e API_TOKEN_SALT="umSaltDeApiTokenMuitoSecretoParaTestes" \
               -e TRANSFER_TOKEN_SALT="umSaltDeTransferTokenSecretoParaTestes" \
               -e APP_KEYS="umAppKeyParaTestes,outroAppKeyParaTestes" \
-              -e JWT_SECRET="umJwtSecretSecretoParaTestes" \ # <--- ADICIONE ESTA LINHA!
-              strapi-cms-test:${{ github.sha }}
+              -e JWT_SECRET="umJwtSecretSecretoParaTestes" \
+              strapi-cms-test:${{ github.sha }})
+
+            echo "Container started with ID: $CONTAINER_ID"
+
+            # Dá um pequeno tempo para o container tentar iniciar.
+            sleep 5
+
+            # Verifica se o container está realmente rodando.
+            # Se não estiver, imprime os logs e falha o passo.
+            if ! docker ps --filter "id=$CONTAINER_ID" --filter "status=running" --format "{{.ID}}" | grep -q "$CONTAINER_ID"; then
+              echo "Error: Strapi container did not stay running after initial start. Printing logs for diagnosis."
+              docker logs $CONTAINER_ID
+              exit 1
+            fi
+            echo "Strapi container is running. Proceeding with health check."
 
         - name: Wait for Strapi to be ready
           run: |
@@ -44,9 +60,9 @@
               sleep 5
             done
             echo "Strapi API did not become ready in time."
-            echo "--- Strapi Container Logs ---"
+            echo "--- Strapi Container Logs (after timeout) ---"
             docker logs strapi-test
-            echo "--- Fim dos Logs ---"
+            echo "--- End of Logs ---"
             exit 1
 
         - name: Run Playwright tests
