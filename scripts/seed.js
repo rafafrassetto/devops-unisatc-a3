@@ -280,14 +280,21 @@ async function importSeedData() {
 }
 
 async function main() {
-  const { createStrapi, compileStrapi } = require('@strapi/strapi/dist/index');
-  const appContext = await compileStrapi();
-  const app = await createStrapi(appContext).load();
-  app.log.level = 'warn';
+  if (typeof strapi === 'undefined' || !strapi.is || !strapi.is.bootstrapped) {
+    console.error("ERRO CRÍTICO: Objeto 'strapi' não está disponível ou não está bootstrapped.");
+    console.error("Este script deve ser executado no contexto de uma aplicação Strapi em execução.");
+    console.error("Verifique se o comando 'docker exec' está correto (ex: `docker exec <container_name> npm run seed:example`).");
+    process.exit(1);
+  }
+
   await seedExampleApp();
-  await app.destroy();
   process.exit(0);
 }
+
+main().catch((error) => {
+  console.error('Seed script encountered an error:', error);
+  process.exit(1);
+});
 
 main().catch((error) => {
   console.error('Seed script encountered an error:', error);
