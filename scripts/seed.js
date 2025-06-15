@@ -29,31 +29,45 @@ async function isFirstRun() {
 }
 
 async function setPublicPermissions(newPermissions) {
-  const publicRole = await strapi.query('plugin::users-permissions.role').findOne({
-    where: {
-      type: 'public',
+  const pluginStore = strapi.store({ type: 'plugin', name: 'users-permissions' });
+  const publicRole = await pluginStore.get({ query: { type: 'role', role: 'public' } });
+
+  if (!publicRole) {
+    console.warn('Public role not found, cannot set permissions.');
+    return;
+  }
+
+  let updatedPermissions = publicRole.permissions || [];
+
+  for (const controller in newPermissions) {
+    const actions = newPermissions[controller];
+    for (const action of actions) {
+      const actionId = `api::${controller}.${controller}.${action}`;
+      
+      let permissionFound = false;
+      for (const perm of updatedPermissions) {
+        if (perm.action === actionId) {
+          perm.enabled = true;
+          permissionFound = true;
+          break;
+        }
+      }
+      if (!permissionFound) {
+        updatedPermissions.push({
+          action: actionId,
+          enabled: true,
+        });
+      }
+    }
+  }
+
+  await pluginStore.set({
+    key: 'role_public',
+    value: {
+      ...publicRole,
+      permissions: updatedPermissions,
     },
   });
-
-  const allPermissionsToCreate = [];
-  Object.keys(newPermissions).map((controller) => {
-    const actions = newPermissions[controller];
-    const permissionsToCreate = actions.map((action) => {
-      return strapi.query('plugin::users-permissions.permission').createOrUpdate({
-        where: {
-          action: `api::${controller}.${controller}.${action}`,
-          role: publicRole.id,
-        },
-        data: {
-          action: `api::${controller}.${controller}.${action}`,
-          role: publicRole.id,
-          enabled: true,
-        },
-      });
-    });
-    allPermissionsToCreate.push(...permissionsToCreate);
-  });
-  await Promise.all(allPermissionsToCreate);
   console.log('Public permissions set in database.');
 }
 
