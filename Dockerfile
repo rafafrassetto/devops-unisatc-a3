@@ -10,7 +10,8 @@ RUN npm install --production
 
 COPY . .
 
-RUN if [ -d "./admin" ]; then npm run build; fi
+RUN mkdir -p ./.tmp/db && chmod -R 775 ./.tmp && chown -R node:node /app
+RUN npm run build
 
 EXPOSE 1337
 
