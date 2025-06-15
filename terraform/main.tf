@@ -281,7 +281,7 @@ resource "aws_lb_target_group" "strapi_tg" {
   protocol = "HTTP"
   vpc_id   = aws_vpc.strapi_vpc.id
   health_check {
-    path = "/_health" # Ou um endpoint de saúde do Strapi, ex: "/admin"
+    path = "/admin"
     protocol = "HTTP"
     matcher = "200"
     interval = 30
