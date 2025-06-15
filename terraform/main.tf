@@ -252,6 +252,7 @@ resource "aws_ecs_service" "strapi_service" {
 
   depends_on = [aws_lb_listener.strapi_http_listener]
 
+
   tags = {
     Name = "strapi-service-v2"
   }
