@@ -15,7 +15,7 @@ test.describe('Article Management', () => {
     await page.click('button[type="submit"]');
 
     await page.waitForURL(/admin/);
-    await page.waitForSelector('nav[aria-label="Side navigation"] a:has-text("Content Manager")', { state: 'visible', timeout: 60000 });
+    await page.waitForSelector('nav[aria-label="Side navigation"] a:has-text("Content Manager")', { state: 'visible', timeout: 90000 });
     await page.click('nav[aria-label="Side navigation"] a:has-text("Content Manager")');
   });
 

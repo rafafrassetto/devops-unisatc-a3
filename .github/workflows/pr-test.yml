@@ -39,29 +39,31 @@ jobs:
             strapi-cms-test:${{ github.sha }}
 
           echo "Container started in background. Giving it time to boot..."
-          sleep 15
+          sleep 60 
 
       - name: Wait for Strapi to be ready (Health Check) and get logs on failure
         run: |
-          echo "Waiting for Strapi to be ready on http://localhost:1337/api/articles..."
+          echo "Waiting for Strapi API and Admin to be ready on http://localhost:1337..."
           MAX_RETRIES=30
           RETRY_INTERVAL=10
           for i in $(seq 1 $MAX_RETRIES); do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1337/api/articles || true)
-            if [ "$HTTP_CODE" = "200" ]; then
-              echo "Strapi API is ready!"
+            HTTP_CODE_API=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1337/api/articles || true)
+            HTTP_CODE_ADMIN=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1337/admin || true)
+            
+            if [ "$HTTP_CODE_API" = "200" ] && [ "$HTTP_CODE_ADMIN" = "200" ]; then
+              echo "Strapi API and Admin are ready!"
               exit 0
             fi
-            echo "Still waiting... ($i/$MAX_RETRIES) - HTTP Code: $HTTP_CODE"
-            if [ "$HTTP_CODE" = "000" ] && [ $((i % 5)) -eq 0 ]; then
-                echo "--- Intermediate Strapi Container Logs (attempt $i) ---"
-                docker logs strapi-test || echo "Could not retrieve logs for strapi-test (it might have crashed or been removed)."
-                echo "--- End of Intermediate Logs ---"
+            echo "Still waiting... ($i/$MAX_RETRIES) - API Code: $HTTP_CODE_API, Admin Code: $HTTP_CODE_ADMIN"
+            if [ "$HTTP_CODE_API" = "000" ] && [ $((i % 5)) -eq 0 ]; then
+              echo "--- Intermediate Strapi Container Logs (attempt $i) ---"
+              docker logs strapi-test || echo "Could not retrieve logs for strapi-test (it might have crashed or been removed)."
+              echo "--- End of Intermediate Logs ---"
             fi
             sleep $RETRY_INTERVAL
           done
           
-          echo "::error::Strapi API did not become ready in time."
+          echo "::error::Strapi API or Admin did not become ready in time."
           echo "--- Final Strapi Container Logs (after timeout) ---"
           docker logs strapi-test || echo "Could not retrieve logs for strapi-test (it might have crashed or been removed)."
           echo "--- End of Final Logs ---"

@@ -284,13 +284,15 @@ resource "aws_lb_target_group" "strapi_tg" {
   target_type = "ip"
   
   health_check {
-    path = "/admin"
-    protocol = "HTTP"
-    matcher = "200"
-    interval = 30
-    timeout = 5
-    healthy_threshold = 2
-    unhealthy_threshold = 2
+      enabled             = true
+      healthy_threshold   = 2
+      interval            = 30
+      matcher             = "200"
+      path                = "/api/articles"
+      port                = "traffic-port"
+      protocol            = "HTTP"
+      timeout             = 5
+      unhealthy_threshold = 2
   }
   tags = {
     Name = "strapi-target-group"
