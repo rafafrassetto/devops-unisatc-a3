@@ -24,15 +24,11 @@ jobs:
       - name: Build Strapi Docker image for testing
         run: docker build -t strapi-cms-test:${{ github.sha }} .
 
-      - name: Run Strapi Docker container
-        id: run_strapi
+      - name: Run Strapi Docker container in background
         run: |
-          set -e
-          trap "docker stop strapi-test && docker rm strapi-test || true" EXIT
-
           mkdir -p ./.tmp/db-test-volume
           
-          CONTAINER_ID=$(docker run -p 1337:1337 --name strapi-test -d \
+          docker run -p 1337:1337 --name strapi-test -d \
             -v ${{ github.workspace }}/.tmp/db-test-volume:/app/.tmp/db \
             -e NODE_ENV=test \
             -e ADMIN_JWT_SECRET="${{ secrets.ADMIN_JWT_SECRET }}" \
@@ -40,13 +36,12 @@ jobs:
             -e TRANSFER_TOKEN_SALT="${{ secrets.TRANSFER_TOKEN_SALT }}" \
             -e APP_KEYS="${{ secrets.APP_KEYS }}" \
             -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-            strapi-cms-test:${{ github.sha }})
-          
-          echo "Container started with ID: $CONTAINER_ID"
-          echo "Giving Strapi some initial time to boot up before health check..."
-          sleep 15 # Aumentei o sleep inicial para dar mais chance ao Strapi
+            strapi-cms-test:${{ github.sha }}
 
-      - name: Wait for Strapi to be ready (Health Check)
+          echo "Container started in background. Giving it time to boot..."
+          sleep 15
+
+      - name: Wait for Strapi to be ready (Health Check) and get logs on failure
         run: |
           echo "Waiting for Strapi to be ready on http://localhost:1337/api/articles..."
           MAX_RETRIES=30
@@ -58,12 +53,18 @@ jobs:
               exit 0
             fi
             echo "Still waiting... ($i/$MAX_RETRIES) - HTTP Code: $HTTP_CODE"
+            if [ "$HTTP_CODE" = "000" ] && [ $((i % 5)) -eq 0 ]; then
+                echo "--- Intermediate Strapi Container Logs (attempt $i) ---"
+                docker logs strapi-test || echo "Could not retrieve logs for strapi-test (it might have crashed or been removed)."
+                echo "--- End of Intermediate Logs ---"
+            fi
             sleep $RETRY_INTERVAL
           done
+          
           echo "::error::Strapi API did not become ready in time."
-          echo "--- Strapi Container Logs (after timeout) ---"
-          docker logs strapi-test || echo "Could not retrieve logs for strapi-test (might have crashed)."
-          echo "--- End of Logs ---"
+          echo "--- Final Strapi Container Logs (after timeout) ---"
+          docker logs strapi-test || echo "Could not retrieve logs for strapi-test (it might have crashed or been removed)."
+          echo "--- End of Final Logs ---"
           exit 1
 
       - name: Run Playwright tests
