@@ -1,71 +1,82 @@
-    name: PR Tests
-    on: [pull_request]
+# .github/workflows/pr-test.yml
+name: PR Tests
+on: [pull_request]
 
-    jobs:
-      test:
-        runs-on: ubuntu-latest
-        steps:
-        - uses: actions/checkout@v2
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
 
-        - name: Set up Node.js
-          uses: actions/setup-node@v2
-          with:
-            node-version: '18'
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
 
-        - name: Install npm dependencies (root project)
-          run: npm install
+      - name: Install npm dependencies (root project)
+        run: npm install
 
-        - name: Install Playwright browsers
-          run: npx playwright install --with-deps
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
 
-        - name: Build Strapi Docker image for testing
-          run: docker build -t strapi-cms-test:${{ github.sha }} .
+      - name: Build Strapi Docker image for testing
+        run: docker build -t strapi-cms-test:${{ github.sha }} .
 
-        - name: Run Strapi Docker container and check status
-          run: |
-            set -e
-            CONTAINER_ID=$(docker run -p 1337:1337 --name strapi-test -d \
-              -e NODE_ENV=test \
-              -e ADMIN_JWT_SECRET="umSegredoAdminSuperSecretoParaTestes" \
-              -e API_TOKEN_SALT="umSaltDeApiTokenMuitoSecretoParaTestes" \
-              -e TRANSFER_TOKEN_SALT="umSaltDeTransferTokenSecretoParaTestes" \
-              -e APP_KEYS="umAppKeyParaTestes,outroAppKeyParaTestes" \
-              -e JWT_SECRET="umJwtSecretSecretoParaTestes" \
-              strapi-cms-test:${{ github.sha }})
+      - name: Run Strapi Docker container and check status
+        run: |
+          set -e
+          trap "docker stop strapi-test && docker rm strapi-test || true" EXIT
 
-            echo "Container started with ID: $CONTAINER_ID"
+          mkdir -p ./.tmp/db-test-volume
+          
+          CONTAINER_ID=$(docker run -p 1337:1337 --name strapi-test -d \
+            -v ${{ github.workspace }}/.tmp/db-test-volume:/app/.tmp/db \
+            -e NODE_ENV=test \
+            -e ADMIN_JWT_SECRET="${{ secrets.ADMIN_JWT_SECRET }}" \
+            -e API_TOKEN_SALT="${{ secrets.API_TOKEN_SALT }}" \
+            -e TRANSFER_TOKEN_SALT="${{ secrets.TRANSFER_TOKEN_SALT }}" \
+            -e APP_KEYS="${{ secrets.APP_KEYS }}" \
+            -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            strapi-cms-test:${{ github.sha }})
 
-            sleep 5
+          echo "Container started with ID: $CONTAINER_ID"
 
-            if ! docker ps --filter "id=$CONTAINER_ID" --filter "status=running" --format "{{.ID}}" | grep -q "$CONTAINER_ID"; then
-              echo "Error: Strapi container did not stay running after initial start. Printing logs for diagnosis."
-              docker logs $CONTAINER_ID
-              exit 1
-            fi
-            echo "Strapi container is running. Proceeding with health check."
+          # Dá um tempo inicial para o container tentar iniciar
+          sleep 10
 
-        - name: Wait for Strapi to be ready
-          run: |
-            echo "Waiting for Strapi to be ready on http://localhost:1337/api/articles..."
-            for i in $(seq 1 180); do
-              if [ "$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1337/api/articles)" = "200" ]; then
-                echo "Strapi API is ready!"
-                exit 0
-              fi
-              echo "Still waiting... ($i/180)"
-              sleep 5
-            done
-            echo "Strapi API did not become ready in time."
-            echo "--- Strapi Container Logs (after timeout) ---"
-            docker logs strapi-test
-            echo "--- Fim dos Logs ---"
+          if ! docker ps --filter "id=$CONTAINER_ID" --filter "status=running" --format "{{.ID}}" | grep -q "$CONTAINER_ID"; then
+            echo "::error::Strapi container did not stay running after initial start. Printing logs for diagnosis."
+            docker logs $CONTAINER_ID
+            docker exec $CONTAINER_ID ls -la /app/.tmp/db || true
             exit 1
+          fi
+          echo "Strapi container is running. Proceeding with health check."
 
-        - name: Run Playwright tests
-          run: npm run test:e2e
-          env:
-            CI: true
+      - name: Wait for Strapi to be ready
+        run: |
+          echo "Waiting for Strapi to be ready on http://localhost:1337/api/articles..."
+          MAX_RETRIES=30
+          RETRY_INTERVAL=10
+          for i in $(seq 1 $MAX_RETRIES); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1337/api/articles || true)
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Strapi API is ready!"
+              exit 0
+            fi
+            echo "Still waiting... ($i/$MAX_RETRIES) - HTTP Code: $HTTP_CODE"
+            sleep $RETRY_INTERVAL
+          done
+          echo "::error::Strapi API did not become ready in time."
+          echo "--- Strapi Container Logs (after timeout) ---"
+          docker logs strapi-test
+          echo "--- End of Logs ---"
+          exit 1
 
-        - name: Stop and remove Strapi container
-          if: always()
-          run: docker stop strapi-test && docker rm strapi-test
+      - name: Run Playwright tests
+        run: npm run test:e2e
+        env:
+          CI: true
+
+      - name: Stop and remove Strapi container (executado sempre)
+        if: always()
+        run: docker stop strapi-test && docker rm strapi-test || true
