@@ -1,6 +1,8 @@
-# .github/workflows/pr-test.yml
 name: PR Tests
-on: [pull_request]
+
+on:
+  pull_request:
+    branches: [ master, main ]
 
 jobs:
   test:
@@ -22,7 +24,8 @@ jobs:
       - name: Build Strapi Docker image for testing
         run: docker build -t strapi-cms-test:${{ github.sha }} .
 
-      - name: Run Strapi Docker container and check status
+      - name: Run Strapi Docker container and get logs
+        id: run_strapi
         run: |
           set -e
           trap "docker stop strapi-test && docker rm strapi-test || true" EXIT
@@ -37,17 +40,21 @@ jobs:
             -e TRANSFER_TOKEN_SALT="${{ secrets.TRANSFER_TOKEN_SALT }}" \
             -e APP_KEYS="${{ secrets.APP_KEYS }}" \
             -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-            strapi-cms-test:${{ github.sha }})
+            strapi-cms-test:${{ github.sha }} || true)
 
-          echo "Container started with ID: $CONTAINER_ID"
+          echo "Container started (or attempted to start) with ID: $CONTAINER_ID"
 
-          # Dá um tempo inicial para o container tentar iniciar
-          sleep 10
+          sleep 5
 
           if ! docker ps --filter "id=$CONTAINER_ID" --filter "status=running" --format "{{.ID}}" | grep -q "$CONTAINER_ID"; then
-            echo "::error::Strapi container did not stay running after initial start. Printing logs for diagnosis."
-            docker logs $CONTAINER_ID
-            docker exec $CONTAINER_ID ls -la /app/.tmp/db || true
+            echo "::error::Strapi container failed to stay running. Printing last known logs."
+            docker logs "$CONTAINER_ID" || echo "Could not retrieve logs for container $CONTAINER_ID (might have been removed or never fully started)."
+            echo "Container exit code (if available):"
+            docker inspect "$CONTAINER_ID" --format='{{.State.ExitCode}}' || true
+
+            echo "Attempting to inspect /app/.tmp/db permissions inside the image (not runtime container):"
+            docker run --rm strapi-cms-test:${{ github.sha }} ls -la /app/.tmp/db || true
+
             exit 1
           fi
           echo "Strapi container is running. Proceeding with health check."
@@ -68,7 +75,7 @@ jobs:
           done
           echo "::error::Strapi API did not become ready in time."
           echo "--- Strapi Container Logs (after timeout) ---"
-          docker logs strapi-test
+          docker logs strapi-test || echo "Could not retrieve logs for strapi-test (might have crashed)."
           echo "--- End of Logs ---"
           exit 1
 

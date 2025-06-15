@@ -1,7 +1,8 @@
 name: Terraform Deploy
+
 on:
   push:
-    branches: [ master]
+    branches: [ master, main ]
   workflow_dispatch:
 
 env:
@@ -36,8 +37,9 @@ jobs:
         id: plan
         working-directory: ./terraform
         run: terraform plan -no-color -var="docker_image=rafafrassetto/strapi-cms:latest"
+
       - name: Terraform Apply
         id: apply
-        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' 
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
         working-directory: ./terraform
         run: terraform apply -auto-approve -var="docker_image=rafafrassetto/strapi-cms:latest"
