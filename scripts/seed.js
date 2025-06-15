@@ -246,18 +246,12 @@ async function importSeedData() {
 }
 
 async function main() {
-  if (typeof strapi !== 'undefined' && strapi.is && strapi.is.bootstrapped) {
-    console.log('Executing seed script within existing Strapi instance context...');
-    await seedExampleApp();
-  } else {
-    console.log('Strapi instance not found, attempting to start one for seeding (local dev mode)...');
-    const setupStrapi = require('@strapi/strapi');
-    const app = await setupStrapi({ appDir: process.cwd(), distDir: process.cwd() }).load();
-    app.log.level = 'warn';
-    await seedExampleApp();
-    await app.destroy();
-  }
-
+  const { createStrapi, compileStrapi } = require('@strapi/strapi');
+  const appContext = await compileStrapi();
+  const app = await createStrapi(appContext).load();
+  app.log.level = 'warn';
+  await seedExampleApp();
+  await app.destroy();
   process.exit(0);
 }
 

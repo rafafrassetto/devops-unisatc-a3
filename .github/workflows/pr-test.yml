@@ -72,7 +72,7 @@ jobs:
       - name: Run Seed Script to populate data and configure permissions
         run: |
           echo "Executing seed script inside Strapi container..."
-          docker exec strapi-test /usr/bin/env node ./scripts/seed.js || {
+          docker exec strapi-test npm run seed:example || {
             echo "::error::Seed script failed. See container logs for details."
             docker logs strapi-test
             exit 1

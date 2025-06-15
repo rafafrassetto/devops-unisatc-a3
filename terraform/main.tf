@@ -277,23 +277,24 @@ resource "aws_lb" "strapi_alb" {
 }
 
 resource "aws_lb_target_group" "strapi_tg" {
-  name     = "strapi-tg"
-  port     = 1337
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.strapi_vpc.id
+  name        = "strapi-tg"
+  port        = 1337
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.strapi_vpc.id
   target_type = "ip"
-  
+
   health_check {
-      enabled             = true
-      healthy_threshold   = 2
-      interval            = 30
-      matcher             = "200"
-      path                = "/api/articles"
-      port                = "traffic-port"
-      protocol            = "HTTP"
-      timeout             = 5
-      unhealthy_threshold = 2
+    enabled             = true
+    healthy_threshold   = 2
+    interval            = 30
+    matcher             = "200"
+    path                = "/api/articles"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
   }
+
   tags = {
     Name = "strapi-target-group"
   }
