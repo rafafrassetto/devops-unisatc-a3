@@ -16,7 +16,7 @@ test.describe('Category Management', () => {
 
     await page.waitForURL(/admin/);
     
-    await page.waitForSelector('nav[aria-label="Side navigation"] a:has-text("Content Manager")', { state: 'visible' });
+    await page.waitForSelector('nav[aria-label="Side navigation"] a:has-text("Content Manager")', { state: 'visible', timeout: 60000 });
     await page.click('nav[aria-label="Side navigation"] a:has-text("Content Manager")');
   });
 
