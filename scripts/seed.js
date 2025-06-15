@@ -280,7 +280,19 @@ async function importSeedData() {
 }
 
 async function main() {
-  await seedExampleApp();
+  const strapiFactory = require('@strapi/strapi');
+  const instance = await strapiFactory({ appDir: process.cwd() }).load();
+  instance.log.level = 'warn';
+
+  global.strapi = instance;
+
+  try {
+    await seedExampleApp();
+  } finally {
+    if (instance && instance.destroy) {
+      await instance.destroy();
+    }
+  }
   process.exit(0);
 }
 
