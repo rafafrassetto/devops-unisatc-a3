@@ -11,14 +11,16 @@ COPY . .
 RUN mkdir -p ./.tmp/db && chmod -R 775 ./.tmp && chown -R node:node /app
 
 RUN npm run build
-    RUN \
+
+ENV \
       APP_KEYS="dummyKeyA,dummyKeyB" \
       ADMIN_JWT_SECRET="dummyAdminJwtSecret" \
       API_TOKEN_SALT="dummyApiTokenSalt" \
       TRANSFER_TOKEN_SALT="dummyTransferTokenSalt" \
-      JWT_SECRET="dummyJwtSecret" \
-      /usr/bin/env node ./scripts/seed.js || true
+      JWT_SECRET="dummyJwtSecret"
+
+RUN /usr/bin/env node ./scripts/seed.js || true
 
 EXPOSE 1337
 
-CMD ["npm", "run", "start:ci"]
+CMD ["node", "dist/src/index.js"]
