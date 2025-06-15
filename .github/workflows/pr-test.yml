@@ -1,50 +1,60 @@
-name: PR Tests
-on: [pull_request]
+name: PR Tests HTML
+
+on:
+  pull_request:
+    branches:
+      - master
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout do Código
+      uses: actions/checkout@v4
 
     - name: Set up Node.js
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v4
       with:
         node-version: '18'
 
-    - name: Install npm dependencies (for Playwright)
-      # dependências do Strapi serão instaladas no Dockerfile.
-      run: npm install --prefix ./e2e-tests
+    - name: Install npm dependencies (para Playwright)
+      # Instala as dependências listadas no package.json da raiz do projeto
+      run: npm install
 
     - name: Install Playwright browsers
       run: npx playwright install --with-deps
 
-    - name: Build Strapi Docker image for testing
-      # constrói a imagem Docker localmente sem fazer push para o Docker Hub,
-      run: docker build -t strapi-cms-test:${{ github.sha }} .
+    - name: Build HTML Docker image for testing
+      # Constrói a imagem Docker do Nginx com seu HTML
+      run: docker build -t html-app-test:${{ github.sha }} .
 
-    - name: Run Strapi Docker container
-      run: docker run -p 1337:1337 --name strapi-test -d strapi-cms-test:${{ github.sha }}
+    - name: Run HTML Docker container
+      # Mapeia a porta 80 do Nginx (Nginx roda na porta 80 por padrão)
+      run: docker run -p 80:80 --name html-test -d html-app-test:${{ github.sha }}
 
-    - name: Wait for Strapi to be ready
+    - name: Wait for HTML app to be ready
       run: |
-        echo "Waiting for Strapi to be ready on http://localhost:1337..."
+        echo "Waiting for HTML app to be ready on http://localhost:80..."
         for i in $(seq 1 30); do
-          if curl -s http://localhost:1337/admin > /dev/null; then
-            echo "Strapi is ready!"
+          # Checa a URL raiz do Nginx
+          if curl -s http://localhost:80 > /dev/null; then
+            echo "HTML app is ready!"
             exit 0
           fi
           echo "Still waiting... ($i/30)"
           sleep 5
         done
-        echo "Strapi did not become ready in time."
-        exit 1 # Falha se o Strapi não ficar pronto
+        echo "HTML app did not become ready in time."
+        exit 1 # Falha se a app não ficar pronta
 
     - name: Run Playwright tests
-      run: npm run test:e2e --prefix ./e2e-tests
+      # Executa os testes usando o script definido no package.json da raiz
+      run: npm run test:e2e
       env:
         CI: true
+        # Define a URL base para seus testes Playwright
+        BASE_URL: http://localhost:80
 
-    - name: Stop and remove Strapi container
-      if: always()
-      run: docker stop strapi-test && docker rm strapi-test
+    - name: Stop and remove HTML container
+      if: always() # Garante que este passo sempre seja executado para limpeza
+      run: docker stop html-test && docker rm html-test

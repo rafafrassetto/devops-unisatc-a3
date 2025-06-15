@@ -1,17 +1,14 @@
-FROM node:18-alpine
-WORKDIR /app
+FROM nginx:alpine
 
-COPY package.json ./
-COPY package-lock.json ./
 
-RUN npm install --production
+RUN rm /etc/nginx/conf.d/*
 
-COPY . .
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-RUN mkdir -p ./.tmp/db && chmod -R 775 ./.tmp && chown -R node:node /app
 
-RUN npm run build
+COPY . /usr/share/nginx/html
 
-EXPOSE 1337
 
-CMD ["npm", "start"]
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

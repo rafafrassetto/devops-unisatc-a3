@@ -1,44 +1,29 @@
 {
   "compilerOptions": {
-    "module": "CommonJS",
-    "moduleResolution": "Node",
-    "lib": ["ES2020"],
-    "target": "ES2019",
-    "strict": false,
+    "target": "es2021",
+    "lib": ["es2021", "dom"],
+    "module": "commonjs",
+    "strict": true,
+    "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "incremental": true,
-    "esModuleInterop": true,
+    "moduleResolution": "node",
     "resolveJsonModule": true,
-    "noEmitOnError": true,
-    "noImplicitThis": true,
-    "outDir": "dist",
-    "rootDir": "."
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": ["node", "@playwright/test"]
   },
   "include": [
-    // Include root files
-    "./",
-    // Include all ts files
-    "./**/*.ts",
-    // Include all js files
-    "./**/*.js",
-    // Force the JSON files in the src folder to be included
-    "src/**/*.json"
+    "**/*.ts",
+    "**/*.d.ts",
+    "**/*.tsx",
+    "e2e-tests/**/*.ts",
+    "playwright.config.ts"
   ],
-
   "exclude": [
-    "node_modules/",
-    "build/",
-    "dist/",
-    ".cache/",
-    ".tmp/",
-
-    // Do not include admin files in the server compilation
-    "src/admin/",
-    // Do not include test files
-    "**/*.test.*",
-    "e2e-tests/",
-    // Do not include plugins in the server compilation
-    "src/plugins/**"
+    "node_modules",
+    "dist",
+    ".cache",
+    "build"
   ]
 }
