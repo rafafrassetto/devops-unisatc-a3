@@ -32,7 +32,7 @@ async function setPublicPermissions(newPermissions) {
   const pluginStore = strapi.store({ type: 'plugin', name: 'users-permissions' });
   let publicRole = null;
   const MAX_RETRIES = 10;
-  const RETRY_DELAY_MS = 2000; // 2 segundos
+  const RETRY_DELAY_MS = 2000;
 
   for (let i = 0; i < MAX_RETRIES; i++) {
     const publicRoles = await strapi.entityService.findMany('plugin::users-permissions.role', {

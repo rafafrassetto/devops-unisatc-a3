@@ -9,7 +9,7 @@
     "deploy": "strapi deploy",
     "dev": "strapi develop",
     "develop": "strapi develop",
-    "seed:example": "strapi run scripts/seed.js",
+    "seed:example": "node ./scripts/seed.js",
     "start": "strapi start",
     "start:ci": "strapi start",
     "strapi": "strapi",
