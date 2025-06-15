@@ -13,14 +13,14 @@ RUN mkdir -p ./.tmp/db && chmod -R 775 ./.tmp && chown -R node:node /app
 RUN npm run build
 
 ENV \
-      APP_KEYS="dummyKeyA,dummyKeyB" \
-      ADMIN_JWT_SECRET="dummyAdminJwtSecret" \
-      API_TOKEN_SALT="dummyApiTokenSalt" \
-      TRANSFER_TOKEN_SALT="dummyTransferTokenSalt" \
-      JWT_SECRET="dummyJwtSecret"
+    APP_KEYS="dummyKeyA,dummyKeyB" \
+    ADMIN_JWT_SECRET="dummyAdminJwtSecret" \
+    API_TOKEN_SALT="dummyApiTokenSalt" \
+    TRANSFER_TOKEN_SALT="dummyTransferTokenSalt" \
+    JWT_SECRET="dummyJwtSecret"
 
 RUN /usr/bin/env node ./scripts/seed.js || true
 
 EXPOSE 1337
 
-CMD ["node", "dist/src/index.js"]
+CMD ["npm", "start"]
