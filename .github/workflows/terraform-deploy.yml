@@ -7,24 +7,19 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2 # Faz o checkout do seu código
+    - uses: actions/checkout@v2
 
-    - uses: hashicorp/setup-terraform@v1 # Configura o Terraform no runner do Actions
+    - uses: hashicorp/setup-terraform@v1
 
-    - name: Terraform Init # Inicializa o backend do Terraform
+    - name: Terraform Init
       working-directory: ./terraform
       run: terraform init
 
-    - name: Terraform Destroy (TEMPORÁRIO - Remova após o primeiro deploy de sucesso)
-      # Este passo é crucial para limpar quaisquer recursos parcialmente criados
-      # de execuções anteriores que falharam, resolvendo os erros "already exists".
-      # ATENÇÃO: EM AMBIENTES DE PRODUÇÃO, NÃO USE -auto-approve COM DESTROY SEM CUIDADO EXTREMO!
+    - name: Terraform Destroy (TEMPORÁRIO)
       working-directory: ./terraform
-      run: terraform destroy -auto-approve -var="aws_access_key=${{ secrets.AWS_ACCESS_KEY_ID }}" -var="aws_secret_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-      # Opcional: Adicione 'if: always()' se quiser que o destroy tente rodar mesmo se o init falhar.
-      # if: always()
+      run: terraform destroy -auto-approve -var="aws_access_key=${{ secrets.AWS_ACCESS_KEY_ID }}" -var="aws_secret_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" -var="docker_image=rafafrassetto/strapi-cms:latest"
 
-    - name: Terraform Apply # Aplica as configurações do Terraform
+    - name: Terraform Apply
       working-directory: ./terraform
       run: terraform apply -auto-approve -var="aws_access_key=${{ secrets.AWS_ACCESS_KEY_ID }}" -var="aws_secret_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" -var="docker_image=rafafrassetto/strapi-cms:latest"
       env:
