@@ -15,10 +15,6 @@ jobs:
       working-directory: ./terraform
       run: terraform init
 
-    - name: Terraform Destroy (TEMPORÁRIO)
-      working-directory: ./terraform
-      run: terraform destroy -auto-approve -var="aws_access_key=${{ secrets.AWS_ACCESS_KEY_ID }}" -var="aws_secret_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" -var="docker_image=rafafrassetto/strapi-cms:latest"
-
     - name: Terraform Apply
       working-directory: ./terraform
       run: terraform apply -auto-approve -var="aws_access_key=${{ secrets.AWS_ACCESS_KEY_ID }}" -var="aws_secret_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" -var="docker_image=rafafrassetto/strapi-cms:latest"
