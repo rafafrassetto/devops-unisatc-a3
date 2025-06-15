@@ -183,7 +183,7 @@ resource "aws_ecs_cluster" "strapi_cluster" {
 # ------------------------------------------------------------------------------------------------
 
 resource "aws_ecs_task_definition" "strapi_task" {
-  family                   = "strapi-task"
+  family                   = "strapi-task-v2"
   cpu                      = "1024" # 1 vCPU
   memory                   = "2048" # 2GB RAM
   network_mode             = "awsvpc"
@@ -222,7 +222,7 @@ resource "aws_ecs_task_definition" "strapi_task" {
     }
   ])
   tags = {
-    Name = "strapi-task-definition"
+    Name = "strapi-task-definition-v2"
   }
 }
 
@@ -231,7 +231,7 @@ resource "aws_ecs_task_definition" "strapi_task" {
 # ------------------------------------------------------------------------------------------------
 
 resource "aws_ecs_service" "strapi_service" {
-  name            = "strapi-service"
+  name            = "strapi-service-v2"
   cluster         = aws_ecs_cluster.strapi_cluster.id
   task_definition = aws_ecs_task_definition.strapi_task.arn
   desired_count   = 1 # Uma instância do Strapi rodando
@@ -253,7 +253,7 @@ resource "aws_ecs_service" "strapi_service" {
   depends_on = [aws_lb_listener.strapi_http_listener]
 
   tags = {
-    Name = "strapi-service"
+    Name = "strapi-service-v2"
   }
 }
 
