@@ -5,6 +5,7 @@ const path = require('path');
 const mime = require('mime-types');
 const { categories, authors, articles, global: globalData, about } = require('../data/data.json');
 
+// Função principal para popular os dados de exemplo
 async function seedExampleApp() {
   try {
     console.log('Setting up the template...');
@@ -17,6 +18,7 @@ async function seedExampleApp() {
   }
 }
 
+// Verifica se é a primeira execução do script
 async function isFirstRun() {
   const pluginStore = strapi.store({
     environment: strapi.config.environment,
@@ -28,6 +30,7 @@ async function isFirstRun() {
   return !initHasRun;
 }
 
+// Define as permissões públicas para os endpoints da API
 async function setPublicPermissions(newPermissions) {
   const pluginStore = strapi.store({ type: 'plugin', name: 'users-permissions' });
   let publicRole = null;
@@ -87,12 +90,14 @@ async function setPublicPermissions(newPermissions) {
   console.log('Public permissions set in database.');
 }
 
+// Obtém o tamanho de um arquivo em bytes
 function getFileSizeInBytes(filePath) {
   const stats = fs.statSync(filePath);
   const fileSizeInBytes = stats['size'];
   return fileSizeInBytes;
 }
 
+// Obtém os metadados de um arquivo (caminho, nome original, tamanho, mimetype)
 function getFileData(fileName) {
   const filePath = path.join('data', 'uploads', fileName);
   const size = getFileSizeInBytes(filePath);
@@ -107,6 +112,7 @@ function getFileData(fileName) {
   };
 }
 
+// Realiza o upload de um arquivo para o Strapi
 async function uploadFile(file, name) {
   return strapi
     .plugin('upload')
@@ -123,6 +129,7 @@ async function uploadFile(file, name) {
     });
 }
 
+// Cria uma nova entrada no Strapi para um modelo específico
 async function createEntry({ model, entry }) {
   try {
     await strapi.query(`api::${model}.${model}`).create({
@@ -135,6 +142,7 @@ async function createEntry({ model, entry }) {
   }
 }
 
+// Verifica se o arquivo já existe antes de fazer upload, ou faz o upload
 async function checkFileExistsBeforeUpload(files) {
   const existingFiles = [];
   const uploadedFiles = [];
@@ -160,6 +168,7 @@ async function checkFileExistsBeforeUpload(files) {
   return allFiles.length === 1 ? allFiles[0] : allFiles;
 }
 
+// Atualiza blocos de conteúdo para incluir arquivos carregados
 async function updateBlocks(blocks) {
   const updatedBlocks = [];
   for (const block of blocks) {
@@ -180,6 +189,7 @@ async function updateBlocks(blocks) {
   return updatedBlocks;
 }
 
+// Importa artigos
 async function importArticles() {
   for (const article of articles) {
     const cover = await checkFileExistsBeforeUpload([`${article.slug}.jpg`]);
@@ -203,6 +213,7 @@ async function importArticles() {
   console.log('Articles imported.');
 }
 
+// Importa configurações globais
 async function importGlobal() {
   const favicon = await checkFileExistsBeforeUpload(['favicon.png']);
   const shareImage = await checkFileExistsBeforeUpload(['default-image.png']);
@@ -221,6 +232,7 @@ async function importGlobal() {
   console.log('Global settings imported.');
 }
 
+// Importa a página "Sobre"
 async function importAbout() {
   const updatedBlocks = await updateBlocks(about.blocks);
 
@@ -235,6 +247,7 @@ async function importAbout() {
   console.log('About page imported.');
 }
 
+// Importa categorias
 async function importCategories() {
   for (const category of categories) {
     await strapi.query('api::category.category').create({ data: category });
@@ -242,6 +255,7 @@ async function importCategories() {
   console.log('Categories imported.');
 }
 
+// Importa autores
 async function importAuthors() {
   for (const author of authors) {
     const avatar = await checkFileExistsBeforeUpload([author.avatar]);
@@ -255,6 +269,7 @@ async function importAuthors() {
   console.log('Authors imported.');
 }
 
+// Orquestra a importação de todos os dados de seed
 async function importSeedData() {
   console.log('Setting public permissions for API endpoints...');
   await setPublicPermissions({
@@ -279,12 +294,11 @@ async function importSeedData() {
   await importAbout();
 }
 
-async function main() {
-  await seedExampleApp();
-  process.exit(0);
-}
-
-main().catch((error) => {
-  console.error('Seed script encountered an error:', error);
-  process.exit(1);
-});
+module.exports = async () => {
+  try {
+    await seedExampleApp();
+  } catch (error) {
+    console.error('Seed script encountered an error:', error);
+    process.exit(1);
+  }
+};
