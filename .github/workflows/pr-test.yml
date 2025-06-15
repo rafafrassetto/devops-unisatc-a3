@@ -12,21 +12,25 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Install npm dependencies (for Playwright)
-      # dependências do Strapi serão instaladas no Dockerfile.
-      run: npm install --prefix ./e2e-tests
+    - name: Install npm dependencies (root project)
+      # As dependências do Playwright estão no package.json da raiz do projeto.
+      # Removido --prefix ./e2e-tests para que o npm instale da raiz.
+      run: npm install # <--- CORRIGIDO: Removido --prefix ./e2e-tests
 
     - name: Install Playwright browsers
+      # Instala os navegadores necessários para o Playwright.
       run: npx playwright install --with-deps
 
     - name: Build Strapi Docker image for testing
-      # constrói a imagem Docker localmente sem fazer push para o Docker Hub,
+      # Constrói a imagem Docker localmente sem fazer push para o Docker Hub.
       run: docker build -t strapi-cms-test:${{ github.sha }} .
 
     - name: Run Strapi Docker container
+      # Inicia o contêiner Docker para os testes e2e.
       run: docker run -p 1337:1337 --name strapi-test -d strapi-cms-test:${{ github.sha }}
 
     - name: Wait for Strapi to be ready
+      # Espera o Strapi iniciar e responder antes de rodar os testes.
       run: |
         echo "Waiting for Strapi to be ready on http://localhost:1337..."
         for i in $(seq 1 30); do
@@ -41,10 +45,13 @@ jobs:
         exit 1 # Falha se o Strapi não ficar pronto
 
     - name: Run Playwright tests
-      run: npm run test:e2e --prefix ./e2e-tests
+      # Executa os testes Playwright. O script "test:e2e" está no package.json da raiz.
+      # Removido --prefix ./e2e-tests para que o comando seja executado da raiz.
+      run: npm run test:e2e # <--- CORRIGIDO: Removido --prefix ./e2e-tests
       env:
         CI: true
 
     - name: Stop and remove Strapi container
+      # Garante que o contêiner seja parado e removido, mesmo em caso de falha nos testes.
       if: always()
       run: docker stop strapi-test && docker rm strapi-test
