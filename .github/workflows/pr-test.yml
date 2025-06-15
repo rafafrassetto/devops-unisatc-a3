@@ -39,23 +39,23 @@ jobs:
             strapi-cms-test:${{ github.sha }}
 
           echo "Container started in background. Giving it time to boot..."
-          sleep 60 
+          sleep 60
 
-      - name: Wait for Strapi to be ready (Health Check) and get logs on failure
+      - name: Wait for Strapi to be ready (Health Check before Seed)
         run: |
-          echo "Waiting for Strapi API and Admin to be ready on http://localhost:1337..."
+          echo "Waiting for Strapi API (code 200/403) and Admin (code 200) to be ready on http://localhost:1337..."
           MAX_RETRIES=30
           RETRY_INTERVAL=10
           for i in $(seq 1 $MAX_RETRIES); do
             HTTP_CODE_API=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1337/api/articles || true)
             HTTP_CODE_ADMIN=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1337/admin || true)
             
-            if [ "$HTTP_CODE_API" = "200" ] && [ "$HTTP_CODE_ADMIN" = "200" ]; then
-              echo "Strapi API and Admin are ready!"
+            if { [ "$HTTP_CODE_API" = "200" ] || [ "$HTTP_CODE_API" = "403" ]; } && [ "$HTTP_CODE_ADMIN" = "200" ]; then
+              echo "Strapi API is alive (code $HTTP_CODE_API) and Admin is ready! Proceeding to seed..."
               exit 0
             fi
             echo "Still waiting... ($i/$MAX_RETRIES) - API Code: $HTTP_CODE_API, Admin Code: $HTTP_CODE_ADMIN"
-            if [ "$HTTP_CODE_API" = "000" ] && [ $((i % 5)) -eq 0 ]; then
+            if { [ "$HTTP_CODE_API" = "000" ] || [ "$HTTP_CODE_ADMIN" = "000" ]; } && [ $((i % 5)) -eq 0 ]; then
               echo "--- Intermediate Strapi Container Logs (attempt $i) ---"
               docker logs strapi-test || echo "Could not retrieve logs for strapi-test (it might have crashed or been removed)."
               echo "--- End of Intermediate Logs ---"
@@ -67,6 +67,40 @@ jobs:
           echo "--- Final Strapi Container Logs (after timeout) ---"
           docker logs strapi-test || echo "Could not retrieve logs for strapi-test (it might have crashed or been removed)."
           echo "--- End of Final Logs ---"
+          exit 1
+
+      - name: Run Seed Script to populate data and configure permissions
+        run: |
+          echo "Executing seed script inside Strapi container..."
+          docker exec strapi-test /usr/bin/env node ./scripts/seed.js || {
+            echo "::error::Seed script failed. See container logs for details."
+            docker logs strapi-test
+            exit 1
+          }
+          echo "Seed script completed."
+        env:
+          ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
+          API_TOKEN_SALT: ${{ secrets.API_TOKEN_SALT }}
+          TRANSFER_TOKEN_SALT: ${{ secrets.TRANSFER_TOKEN_SALT }}
+          APP_KEYS: ${{ secrets.APP_KEYS }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+      - name: Re-check Strapi API readiness after seed
+        run: |
+          echo "Re-checking Strapi API readiness on http://localhost:1337/api/articles after seed..."
+          MAX_RETRIES=5
+          RETRY_INTERVAL=5
+          for i in $(seq 1 $MAX_RETRIES); do
+            HTTP_CODE_API=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1337/api/articles || true)
+            if [ "$HTTP_CODE_API" = "200" ]; then
+              echo "Strapi API is fully ready (HTTP 200)!"
+              exit 0
+            fi
+            echo "API still not 200 after seed... ($i/$MAX_RETRIES) - HTTP Code: $HTTP_CODE_API"
+            sleep $RETRY_INTERVAL
+          done
+          echo "::error::Strapi API did not return 200 after seed script."
+          docker logs strapi-test
           exit 1
 
       - name: Run Playwright tests
