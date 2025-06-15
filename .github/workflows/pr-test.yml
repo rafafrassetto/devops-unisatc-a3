@@ -27,7 +27,7 @@
         - name: Wait for Strapi to be ready
           run: |
             echo "Waiting for Strapi to be ready on http://localhost:1337..."
-            for i in $(seq 1 120); do # <--- AJUSTADO: de 60 para 120 tentativas (10 minutos)
+            for i in $(seq 1 120); do
               if curl -s http://localhost:1337/admin > /dev/null; then
                 echo "Strapi is ready!"
                 exit 0
@@ -44,5 +44,5 @@
             CI: true
 
         - name: Stop and remove Strapi container
-      if: always()
-      run: docker stop strapi-test && docker rm strapi-test   
+          if: always()
+          run: docker stop strapi-test && docker rm strapi-test
