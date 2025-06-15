@@ -21,3 +21,4 @@ yarn-error.log*
 
 # EXCLUIR OS ARQUIVOS DE TESTE PLAYWRIGHT DO BUILD DA IMAGEM
 e2e-tests/
+playwright.config.ts
