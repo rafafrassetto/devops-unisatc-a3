@@ -3,10 +3,8 @@
 const fs = require('fs-extra');
 const path = require('path');
 const mime = require('mime-types');
-// Renomeie 'global' para 'globalData' para evitar conflito com a palavra-chave global
-const { categories, authors, articles, global: globalData, about } = require('../data/data.json');
+const { categories, authors, articles, global, about } = require('../data/data.json');
 
-// Função principal para popular os dados de exemplo
 async function seedExampleApp() {
   const shouldImportSeedData = await isFirstRun();
 
@@ -18,8 +16,6 @@ async function seedExampleApp() {
     } catch (error) {
       console.log('Could not import seed data');
       console.error(error);
-      // Re-lança o erro para que o processo de execução seja notificado da falha
-      throw error; 
     }
   } else {
     console.log(
@@ -28,7 +24,6 @@ async function seedExampleApp() {
   }
 }
 
-// Verifica se é a primeira execução do script
 async function isFirstRun() {
   const pluginStore = strapi.store({
     environment: strapi.config.environment,
@@ -41,72 +36,29 @@ async function isFirstRun() {
 }
 
 async function setPublicPermissions(newPermissions) {
-  const pluginStore = strapi.store({ type: 'plugin', name: 'users-permissions' });
-  let publicRole = null;
-  const MAX_RETRIES = 10;
-  const RETRY_DELAY_MS = 2000; // 2 segundos
-
-  // Tenta encontrar o papel público várias vezes, pois ele pode não estar disponível imediatamente após o Strapi iniciar
-  for (let i = 0; i < MAX_RETRIES; i++) {
-    const publicRoles = await strapi.entityService.findMany('plugin::users-permissions.role', {
-      filters: { type: 'public' },
-    });
-    if (publicRoles && publicRoles.length > 0) {
-      publicRole = publicRoles[0];
-      console.log('Public role found after retry.');
-      break;
-    }
-    console.warn(`Public role not found (attempt ${i + 1}/${MAX_RETRIES}), retrying in ${RETRY_DELAY_MS / 1000}s...`);
-    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-  }
-
-  if (!publicRole) {
-    console.error('Failed to find public role after multiple retries, cannot set permissions.');
-    throw new Error('Public role not found.');
-  }
-
-  // Obtenha as permissões atuais do papel público
-  // Note: A forma correta de atualizar permissões é um pouco mais complexa do que apenas criar novas entradas.
-  // Você precisa buscar as permissões existentes e habilitá-las ou criá-las se não existirem.
-  // A versão original do seu script (primeira que você me enviou) tinha uma abordagem melhor para isso.
-  // Vou usar a lógica da sua primeira versão, que iterava sobre as permissões existentes.
-  const roleId = publicRole.id;
-  let updatedPermissions = publicRole.permissions || [];
-
-  for (const controller in newPermissions) {
-    const actions = newPermissions[controller];
-    for (const action of actions) {
-      const actionId = `api::${controller}.${controller}.${action}`;
-      
-      let permissionFound = false;
-      for (const perm of updatedPermissions) {
-        if (perm.action === actionId) {
-          perm.enabled = true;
-          permissionFound = true;
-          break;
-        }
-      }
-      if (!permissionFound) {
-        updatedPermissions.push({
-          action: actionId,
-          enabled: true,
-          role: roleId // Adiciona o roleId para a nova permissão
-        });
-      }
-    }
-  }
-
-  // Salva as permissões atualizadas no armazenamento do plugin
-  await pluginStore.set({
-    key: 'role_public',
-    value: {
-      ...publicRole,
-      permissions: updatedPermissions,
+  // Find the ID of the public role
+  const publicRole = await strapi.query('plugin::users-permissions.role').findOne({
+    where: {
+      type: 'public',
     },
   });
-  console.log('Public permissions set in database.');
-}
 
+  // Create the new permissions and link them to the public role
+  const allPermissionsToCreate = [];
+  Object.keys(newPermissions).map((controller) => {
+    const actions = newPermissions[controller];
+    const permissionsToCreate = actions.map((action) => {
+      return strapi.query('plugin::users-permissions.permission').create({
+        data: {
+          action: `api::${controller}.${controller}.${action}`,
+          role: publicRole.id,
+        },
+      });
+    });
+    allPermissionsToCreate.push(...permissionsToCreate);
+  });
+  await Promise.all(allPermissionsToCreate);
+}
 
 function getFileSizeInBytes(filePath) {
   const stats = fs.statSync(filePath);
@@ -116,6 +68,7 @@ function getFileSizeInBytes(filePath) {
 
 function getFileData(fileName) {
   const filePath = path.join('data', 'uploads', fileName);
+  // Parse the file metadata
   const size = getFileSizeInBytes(filePath);
   const ext = fileName.split('.').pop();
   const mimeType = mime.lookup(ext || '') || '';
@@ -144,17 +97,15 @@ async function uploadFile(file, name) {
     });
 }
 
-// Cria uma nova entrada no Strapi para um modelo específico
+// Create an entry and attach files if there are any
 async function createEntry({ model, entry }) {
   try {
-    // Usar strapi.entityService.create para criação de entradas
-    await strapi.entityService.create(`api::${model}.${model}`, {
+    // Actually create the entry in Strapi
+    await strapi.documents(`api::${model}.${model}`).create({
       data: entry,
     });
-    console.log(`Created entry for model ${model}`);
   } catch (error) {
-    console.error(`Error creating entry for model ${model}:`, error);
-    throw error; // Re-lança o erro para que a seed script falhe se a criação de uma entrada falhar
+    console.error({ model, entry, error });
   }
 }
 
@@ -164,6 +115,7 @@ async function checkFileExistsBeforeUpload(files) {
   const filesCopy = [...files];
 
   for (const fileName of filesCopy) {
+    // Check if the file already exists in Strapi
     const fileWhereName = await strapi.query('plugin::upload.file').findOne({
       where: {
         name: fileName.replace(/\..*$/, ''),
@@ -171,8 +123,10 @@ async function checkFileExistsBeforeUpload(files) {
     });
 
     if (fileWhereName) {
+      // File exists, don't upload it
       existingFiles.push(fileWhereName);
     } else {
+      // File doesn't exist, upload it
       const fileData = getFileData(fileName);
       const fileNameNoExtension = fileName.split('.').shift();
       const [file] = await uploadFile(fileData, fileNameNoExtension);
@@ -180,6 +134,7 @@ async function checkFileExistsBeforeUpload(files) {
     }
   }
   const allFiles = [...existingFiles, ...uploadedFiles];
+  // If only one file then return only that file
   return allFiles.length === 1 ? allFiles[0] : allFiles;
 }
 
@@ -188,18 +143,26 @@ async function updateBlocks(blocks) {
   for (const block of blocks) {
     if (block.__component === 'shared.media') {
       const uploadedFiles = await checkFileExistsBeforeUpload([block.file]);
+      // Copy the block to not mutate directly
       const blockCopy = { ...block };
+      // Replace the file name on the block with the actual file
       blockCopy.file = uploadedFiles;
       updatedBlocks.push(blockCopy);
     } else if (block.__component === 'shared.slider') {
+      // Get files already uploaded to Strapi or upload new files
       const existingAndUploadedFiles = await checkFileExistsBeforeUpload(block.files);
+      // Copy the block to not mutate directly
       const blockCopy = { ...block };
+      // Replace the file names on the block with the actual files
       blockCopy.files = existingAndUploadedFiles;
+      // Push the updated block
       updatedBlocks.push(blockCopy);
     } else {
+      // Just push the block as is
       updatedBlocks.push(block);
     }
   }
+
   return updatedBlocks;
 }
 
@@ -208,40 +171,35 @@ async function importArticles() {
     const cover = await checkFileExistsBeforeUpload([`${article.slug}.jpg`]);
     const updatedBlocks = await updateBlocks(article.blocks);
 
-    const categoryId = article.category ? article.category.id : null;
-    const authorId = article.author ? article.author.id : null;
-
     await createEntry({
       model: 'article',
       entry: {
         ...article,
         cover,
-        publishedAt: Date.now(),
         blocks: updatedBlocks,
-        category: categoryId, // Certifique-se de que o ID da categoria está sendo passado corretamente
-        author: authorId,   // Certifique-se de que o ID do autor está sendo passado corretamente
+        // Make sure it's not a draft
+        publishedAt: Date.now(),
       },
     });
   }
-  console.log('Articles imported.');
 }
 
 async function importGlobal() {
   const favicon = await checkFileExistsBeforeUpload(['favicon.png']);
   const shareImage = await checkFileExistsBeforeUpload(['default-image.png']);
-  await createEntry({
+  return createEntry({
     model: 'global',
     entry: {
-      ...globalData, // Use globalData aqui
+      ...global,
       favicon,
+      // Make sure it's not a draft
       publishedAt: Date.now(),
       defaultSeo: {
-        ...globalData.defaultSeo, // Use globalData aqui
+        ...global.defaultSeo,
         shareImage,
       },
     },
   });
-  console.log('Global settings imported.');
 }
 
 async function importAbout() {
@@ -251,18 +209,17 @@ async function importAbout() {
     model: 'about',
     entry: {
       ...about,
-      publishedAt: Date.now(),
       blocks: updatedBlocks,
+      // Make sure it's not a draft
+      publishedAt: Date.now(),
     },
   });
-  console.log('About page imported.');
 }
 
 async function importCategories() {
   for (const category of categories) {
     await createEntry({ model: 'category', entry: category });
   }
-  console.log('Categories imported.');
 }
 
 async function importAuthors() {
@@ -277,12 +234,10 @@ async function importAuthors() {
       },
     });
   }
-  console.log('Authors imported.');
 }
 
-// Orquestra a importação de todos os dados de seed
 async function importSeedData() {
-  console.log('Setting public permissions for API endpoints...');
+  // Allow read of application content types
   await setPublicPermissions({
     article: ['find', 'findOne'],
     category: ['find', 'findOne'],
@@ -290,23 +245,30 @@ async function importSeedData() {
     global: ['find', 'findOne'],
     about: ['find', 'findOne'],
   });
-  console.log('Public permissions set.');
 
-  console.log('Importing categories...');
+  // Create all entries
   await importCategories();
-  console.log('Importing authors...');
   await importAuthors();
-  
-  console.log('Importing articles...');
   await importArticles();
-  console.log('Importing global settings...');
   await importGlobal();
-  console.log('Importing about page...');
   await importAbout();
 }
 
-// Exporta a função principal para ser executada pelo Strapi CLI
-// Quando o Strapi executa um script desta forma, ele já injeta o objeto 'strapi' globalmente.
-module.exports = async () => {
+async function main() {
+  const { createStrapi, compileStrapi } = require('@strapi/strapi');
+
+  const appContext = await compileStrapi();
+  const app = await createStrapi(appContext).load();
+
+  app.log.level = 'error';
+
   await seedExampleApp();
-};
+  await app.destroy();
+
+  process.exit(0);
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

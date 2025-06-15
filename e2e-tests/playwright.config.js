@@ -7,12 +7,9 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
-  timeout: 180 * 1000,
   use: {
     baseURL: 'http://localhost:1337',
     trace: 'on-first-retry',
-    actionTimeout: 60 * 1000,
-    navigationTimeout: 60 * 1000,
   },
 
   projects: [
@@ -20,5 +17,13 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    // {
+    //   name: 'firefox',
+    //   use: { ...devices['Desktop Firefox'] },
+    // },
+    // {
+    //   name: 'webkit',
+    //   use: { ...devices['Desktop Safari'] },
+    // },
   ],
 });
