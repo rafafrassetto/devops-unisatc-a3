@@ -1,48 +1,48 @@
-    name: PR Tests
-    on: [pull_request]
+name: PR Tests
+on: [pull_request]
 
-    jobs:
-      test:
-        runs-on: ubuntu-latest
-        steps:
-        - uses: actions/checkout@v2
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
 
-        - name: Set up Node.js
-          uses: actions/setup-node@v2
-          with:
-            node-version: '18'
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '18'
 
-        - name: Install npm dependencies (root project)
-          run: npm install
+    - name: Install npm dependencies (root project)
+      run: npm install
 
-        - name: Install Playwright browsers
-          run: npx playwright install --with-deps
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps
 
-        - name: Build Strapi Docker image for testing
-          run: docker build -t strapi-cms-test:${{ github.sha }} .
+    - name: Build Strapi Docker image for testing
+      run: docker build -t strapi-cms-test:${{ github.sha }} .
 
-        - name: Run Strapi Docker container
-          run: docker run -p 1337:1337 --name strapi-test -d strapi-cms-test:${{ github.sha }}
+    - name: Run Strapi Docker container
+      run: docker run -p 1337:1337 --name strapi-test -d strapi-cms-test:${{ github.sha }}
 
-        - name: Wait for Strapi to be ready
-          run: |
-            echo "Waiting for Strapi to be ready on http://localhost:1337..."
-            for i in $(seq 1 120); do
-              if curl -s http://localhost:1337/admin > /dev/null; then
-                echo "Strapi is ready!"
-                exit 0
-              fi
-              echo "Still waiting... ($i/120)"
-              sleep 5
-            done
-            echo "Strapi did not become ready in time."
-            exit 1 # Falha se o Strapi não ficar pronto
+    - name: Wait for Strapi to be ready
+      run: |
+        echo "Waiting for Strapi to be ready on http://localhost:1337/api/articles..."
+        for i in $(seq 1 180); do
+          if [ "$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1337/api/articles)" = "200" ]; then
+            echo "Strapi API is ready!"
+            exit 0
+          fi
+          echo "Still waiting... ($i/180)"
+          sleep 5
+        done
+        echo "Strapi API did not become ready in time."
+        exit 1
 
-        - name: Run Playwright tests
-          run: npm run test:e2e
-          env:
-            CI: true
+    - name: Run Playwright tests
+      run: npm run test:e2e
+      env:
+        CI: true
 
-        - name: Stop and remove Strapi container
-          if: always()
-          run: docker stop strapi-test && docker rm strapi-test
+    - name: Stop and remove Strapi container
+      if: always()
+      run: docker stop strapi-test && docker rm strapi-test
