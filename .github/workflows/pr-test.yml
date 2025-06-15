@@ -1,54 +1,48 @@
-name: PR Tests
-on: [pull_request]
+    name: PR Tests
+    on: [pull_request]
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
+    jobs:
+      test:
+        runs-on: ubuntu-latest
+        steps:
+        - uses: actions/checkout@v2
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '18'
+        - name: Set up Node.js
+          uses: actions/setup-node@v2
+          with:
+            node-version: '18'
 
-    - name: Install npm dependencies (root project)
-      # As dependências do Playwright estão no package.json da raiz do projeto.
-      run: npm install
+        - name: Install npm dependencies (root project)
+          run: npm install
 
-    - name: Install Playwright browsers
-      # Instala os navegadores necessários para o Playwright.
-      run: npx playwright install --with-deps
+        - name: Install Playwright browsers
+          run: npx playwright install --with-deps
 
-    - name: Build Strapi Docker image for testing
-      # Constrói a imagem Docker localmente sem fazer push para o Docker Hub.
-      run: docker build -t strapi-cms-test:${{ github.sha }} .
+        - name: Build Strapi Docker image for testing
+          run: docker build -t strapi-cms-test:${{ github.sha }} .
 
-    - name: Run Strapi Docker container
-      # Inicia o contêiner Docker para os testes e2e.
-      run: docker run -p 1337:1337 --name strapi-test -d strapi-cms-test:${{ github.sha }}
+        - name: Run Strapi Docker container
+          run: docker run -p 1337:1337 --name strapi-test -d strapi-cms-test:${{ github.sha }}
 
-    - name: Wait for Strapi to be ready
-      run: |
-        echo "Waiting for Strapi to be ready on http://localhost:1337..."
-        for i in $(seq 1 60); do # <--- AJUSTADO: de 30 para 60 tentativas
-          if curl -s http://localhost:1337/admin > /dev/null; then
-            echo "Strapi is ready!"
-            exit 0
-          fi
-          echo "Still waiting... ($i/60)"
-          sleep 5
-        done
-        echo "Strapi did not become ready in time."
-        exit 1 # Falha se o Strapi não ficar pronto
+        - name: Wait for Strapi to be ready
+          run: |
+            echo "Waiting for Strapi to be ready on http://localhost:1337..."
+            for i in $(seq 1 120); do # <--- AJUSTADO: de 60 para 120 tentativas (10 minutos)
+              if curl -s http://localhost:1337/admin > /dev/null; then
+                echo "Strapi is ready!"
+                exit 0
+              fi
+              echo "Still waiting... ($i/120)"
+              sleep 5
+            done
+            echo "Strapi did not become ready in time."
+            exit 1 # Falha se o Strapi não ficar pronto
 
-    - name: Run Playwright tests
-      # Executa os testes Playwright.
-      run: npm run test:e2e
-      env:
-        CI: true
+        - name: Run Playwright tests
+          run: npm run test:e2e
+          env:
+            CI: true
 
-    - name: Stop and remove Strapi container
-      # Garante que o contêiner seja parado e removido, mesmo em caso de falha nos testes.
+        - name: Stop and remove Strapi container
       if: always()
-      run: docker stop strapi-test && docker rm strapi-test
+      run: docker stop strapi-test && docker rm strapi-test   
