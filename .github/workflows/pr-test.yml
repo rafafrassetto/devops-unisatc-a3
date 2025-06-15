@@ -24,7 +24,7 @@ jobs:
       - name: Build Strapi Docker image for testing
         run: docker build -t strapi-cms-test:${{ github.sha }} .
 
-      - name: Run Strapi Docker container and get logs
+      - name: Run Strapi Docker container
         id: run_strapi
         run: |
           set -e
@@ -40,26 +40,13 @@ jobs:
             -e TRANSFER_TOKEN_SALT="${{ secrets.TRANSFER_TOKEN_SALT }}" \
             -e APP_KEYS="${{ secrets.APP_KEYS }}" \
             -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-            strapi-cms-test:${{ github.sha }} || true)
+            strapi-cms-test:${{ github.sha }})
+          
+          echo "Container started with ID: $CONTAINER_ID"
+          echo "Giving Strapi some initial time to boot up before health check..."
+          sleep 15 # Aumentei o sleep inicial para dar mais chance ao Strapi
 
-          echo "Container started (or attempted to start) with ID: $CONTAINER_ID"
-
-          sleep 5
-
-          if ! docker ps --filter "id=$CONTAINER_ID" --filter "status=running" --format "{{.ID}}" | grep -q "$CONTAINER_ID"; then
-            echo "::error::Strapi container failed to stay running. Printing last known logs."
-            docker logs "$CONTAINER_ID" || echo "Could not retrieve logs for container $CONTAINER_ID (might have been removed or never fully started)."
-            echo "Container exit code (if available):"
-            docker inspect "$CONTAINER_ID" --format='{{.State.ExitCode}}' || true
-
-            echo "Attempting to inspect /app/.tmp/db permissions inside the image (not runtime container):"
-            docker run --rm strapi-cms-test:${{ github.sha }} ls -la /app/.tmp/db || true
-
-            exit 1
-          fi
-          echo "Strapi container is running. Proceeding with health check."
-
-      - name: Wait for Strapi to be ready
+      - name: Wait for Strapi to be ready (Health Check)
         run: |
           echo "Waiting for Strapi to be ready on http://localhost:1337/api/articles..."
           MAX_RETRIES=30
