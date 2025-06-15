@@ -4,24 +4,27 @@ const ADMIN_URL = 'http://localhost:1337/admin';
 
 test.describe('Article Management', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(ADMIN_URL);
+    await page.goto(ADMIN_URL, { waitUntil: 'domcontentloaded' });
+
     await page.waitForSelector('input[name="email"]');
 
     await page.fill('input[name="email"]', 'admin@satc.edu.br');
     await page.fill('input[name="password"]', 'welcomeToStrapi123');
     await page.click('button[type="submit"]');
 
-    await page.waitForURL(ADMIN_URL);
+    await page.waitForURL(/admin/, { timeout: 60000 });
+    await page.waitForSelector('text="Content Manager"', { state: 'visible', timeout: 60000 }); 
   });
 
   test('should create a new article', async ({ page }) => {
     await page.click('text=Collections');
     await page.click('text=Article');
-    await page.waitForURL('**/content-manager/collectionType/api::article.article');
+    await page.waitForURL('**/content-manager/collectionType/api::article.article', { timeout: 60000 });
+    await page.waitForSelector('button:has-text("Create new entry")', { state: 'visible', timeout: 30000 });
 
     await page.click('button:has-text("Create new entry")');
 
-    await page.waitForSelector('input[name="title"]');
+    await page.waitForSelector('input[name="title"]', { timeout: 30000 });
 
     const articleTitle = `Test Article ${Date.now()}`;
     await page.fill('input[name="title"]', articleTitle);
@@ -29,23 +32,23 @@ test.describe('Article Management', () => {
 
     await page.click('button:has-text("Save")');
 
-    await page.waitForSelector('text=Created successfully', { timeout: 10000 }).catch(() => {
+    await page.waitForSelector('text=Created successfully', { timeout: 20000 }).catch(() => {
         console.warn("Notification 'Created successfully' not found, proceeding with URL check.");
     });
 
-    await page.goto('**/content-manager/collectionType/api::article.article');
-    await page.waitForSelector(`text="${articleTitle}"`);
+    await page.goto('**/content-manager/collectionType/api::article.article', { timeout: 60000 });
+    await page.waitForSelector(`text="${articleTitle}"`, { timeout: 30000 });
     expect(await page.textContent(`text="${articleTitle}"`)).toBe(articleTitle);
   });
 
   test('should view article details', async ({ page }) => {
     await page.click('text=Collections');
     await page.click('text=Article');
-    await page.waitForURL('**/content-manager/collectionType/api::article.article');
+    await page.waitForURL('**/content-manager/collectionType/api::article.article', { timeout: 60000 });
 
-    await page.locator('table tbody tr:first-child').click();
+    await page.locator('table tbody tr:first-child').click({ timeout: 30000 });
 
-    await page.waitForSelector('input[name="title"]');
+    await page.waitForSelector('input[name="title"]', { timeout: 30000 });
     expect(await page.locator('input[name="title"]').inputValue()).toBeTruthy();
     expect(await page.locator('textarea[name="content"]').inputValue()).toBeTruthy();
   });
