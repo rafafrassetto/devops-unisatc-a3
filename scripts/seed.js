@@ -28,7 +28,6 @@ async function isFirstRun() {
   return !initHasRun;
 }
 
-// FUNÇÃO setPublicPermissions CORRIGIDA com retries
 async function setPublicPermissions(newPermissions) {
   const pluginStore = strapi.store({ type: 'plugin', name: 'users-permissions' });
   let publicRole = null;
@@ -181,13 +180,11 @@ async function updateBlocks(blocks) {
   return updatedBlocks;
 }
 
-// ImportArticles CORRIGIDO para usar IDs diretamente do data.json
 async function importArticles() {
   for (const article of articles) {
     const cover = await checkFileExistsBeforeUpload([`${article.slug}.jpg`]);
     const updatedBlocks = await updateBlocks(article.blocks);
 
-    // Agora passa diretamente o valor numérico do ID
     const categoryId = article.category ? article.category.id : null;
     const authorId = article.author ? article.author.id : null;
 
@@ -198,8 +195,8 @@ async function importArticles() {
         cover,
         publishedAt: Date.now(),
         blocks: updatedBlocks,
-        category: categoryId, // Passa apenas o ID numérico
-        author: authorId,     // Passa apenas o ID numérico
+        category: categoryId,
+        author: authorId,
       },
     });
   }
@@ -238,9 +235,6 @@ async function importAbout() {
   console.log('About page imported.');
 }
 
-// As funções importCategories e importAuthors não precisam armazenar em 'importedCategories' e 'importedAuthors'
-// pois 'importArticles' agora usa os IDs do data.json diretamente.
-// Elas ainda precisam criar as entradas para que os IDs existam.
 async function importCategories() {
   for (const category of categories) {
     await strapi.query('api::category.category').create({ data: category });
@@ -272,7 +266,6 @@ async function importSeedData() {
   });
   console.log('Public permissions set.');
 
-  // ORDEM IMPORTA: Importar categorias e autores ANTES dos artigos
   console.log('Importing categories...');
   await importCategories();
   console.log('Importing authors...');
@@ -287,7 +280,7 @@ async function importSeedData() {
 }
 
 async function main() {
-  const { createStrapi, compileStraapi } = require('@strapi/strapi');
+  const { createStrapi, compileStrapi } = require('@strapi/strapi/dist/index');
   const appContext = await compileStrapi();
   const app = await createStrapi(appContext).load();
   app.log.level = 'warn';
