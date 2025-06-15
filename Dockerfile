@@ -11,6 +11,7 @@ COPY . .
 RUN mkdir -p ./.tmp/db && chmod -R 775 ./.tmp && chown -R node:node /app
 
 RUN npm run build
+RUN /usr/bin/env node ./scripts/seed.js || true
 
 EXPOSE 1337
 
