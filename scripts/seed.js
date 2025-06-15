@@ -28,15 +28,32 @@ async function isFirstRun() {
   return !initHasRun;
 }
 
+// FUNÇÃO setPublicPermissions CORRIGIDA com retries
 async function setPublicPermissions(newPermissions) {
   const pluginStore = strapi.store({ type: 'plugin', name: 'users-permissions' });
-  const publicRole = await pluginStore.get({ query: { type: 'role', role: 'public' } });
+  let publicRole = null;
+  const MAX_RETRIES = 10;
+  const RETRY_DELAY_MS = 2000; // 2 segundos
 
-  if (!publicRole) {
-    console.warn('Public role not found, cannot set permissions.');
-    return;
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    const publicRoles = await strapi.entityService.findMany('plugin::users-permissions.role', {
+      filters: { type: 'public' },
+    });
+    if (publicRoles && publicRoles.length > 0) {
+      publicRole = publicRoles[0];
+      console.log('Public role found after retry.');
+      break;
+    }
+    console.warn(`Public role not found (attempt ${i + 1}/${MAX_RETRIES}), retrying in ${RETRY_DELAY_MS / 1000}s...`);
+    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
   }
 
+  if (!publicRole) {
+    console.error('Failed to find public role after multiple retries, cannot set permissions.');
+    throw new Error('Public role not found.');
+  }
+
+  const roleId = publicRole.id;
   let updatedPermissions = publicRole.permissions || [];
 
   for (const controller in newPermissions) {
@@ -164,10 +181,15 @@ async function updateBlocks(blocks) {
   return updatedBlocks;
 }
 
+// ImportArticles CORRIGIDO para usar IDs diretamente do data.json
 async function importArticles() {
   for (const article of articles) {
     const cover = await checkFileExistsBeforeUpload([`${article.slug}.jpg`]);
     const updatedBlocks = await updateBlocks(article.blocks);
+
+    // Agora passa diretamente o valor numérico do ID
+    const categoryId = article.category ? article.category.id : null;
+    const authorId = article.author ? article.author.id : null;
 
     await createEntry({
       model: 'article',
@@ -176,6 +198,8 @@ async function importArticles() {
         cover,
         publishedAt: Date.now(),
         blocks: updatedBlocks,
+        category: categoryId, // Passa apenas o ID numérico
+        author: authorId,     // Passa apenas o ID numérico
       },
     });
   }
@@ -214,9 +238,12 @@ async function importAbout() {
   console.log('About page imported.');
 }
 
+// As funções importCategories e importAuthors não precisam armazenar em 'importedCategories' e 'importedAuthors'
+// pois 'importArticles' agora usa os IDs do data.json diretamente.
+// Elas ainda precisam criar as entradas para que os IDs existam.
 async function importCategories() {
   for (const category of categories) {
-    await createEntry({ model: 'category', entry: category });
+    await strapi.query('api::category.category').create({ data: category });
   }
   console.log('Categories imported.');
 }
@@ -224,10 +251,8 @@ async function importCategories() {
 async function importAuthors() {
   for (const author of authors) {
     const avatar = await checkFileExistsBeforeUpload([author.avatar]);
-
-    await createEntry({
-      model: 'author',
-      entry: {
+    await strapi.query('api::author.author').create({
+      data: {
         ...author,
         avatar,
       },
@@ -247,10 +272,12 @@ async function importSeedData() {
   });
   console.log('Public permissions set.');
 
+  // ORDEM IMPORTA: Importar categorias e autores ANTES dos artigos
   console.log('Importing categories...');
   await importCategories();
   console.log('Importing authors...');
   await importAuthors();
+  
   console.log('Importing articles...');
   await importArticles();
   console.log('Importing global settings...');
@@ -260,7 +287,7 @@ async function importSeedData() {
 }
 
 async function main() {
-  const { createStrapi, compileStrapi } = require('@strapi/strapi');
+  const { createStrapi, compileStraapi } = require('@strapi/strapi');
   const appContext = await compileStrapi();
   const app = await createStrapi(appContext).load();
   app.log.level = 'warn';
