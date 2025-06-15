@@ -23,8 +23,7 @@
 
         - name: Run Strapi Docker container and check status
           run: |
-            set -e # Sai imediatamente se um comando falhar
-            # Inicia o container Strapi em modo detached e captura o ID.
+            set -e
             CONTAINER_ID=$(docker run -p 1337:1337 --name strapi-test -d \
               -e NODE_ENV=test \
               -e ADMIN_JWT_SECRET="umSegredoAdminSuperSecretoParaTestes" \
@@ -36,11 +35,8 @@
 
             echo "Container started with ID: $CONTAINER_ID"
 
-            # Dá um pequeno tempo para o container tentar iniciar.
             sleep 5
 
-            # Verifica se o container está realmente rodando.
-            # Se não estiver, imprime os logs e falha o passo.
             if ! docker ps --filter "id=$CONTAINER_ID" --filter "status=running" --format "{{.ID}}" | grep -q "$CONTAINER_ID"; then
               echo "Error: Strapi container did not stay running after initial start. Printing logs for diagnosis."
               docker logs $CONTAINER_ID
@@ -62,7 +58,7 @@
             echo "Strapi API did not become ready in time."
             echo "--- Strapi Container Logs (after timeout) ---"
             docker logs strapi-test
-            echo "--- End of Logs ---"
+            echo "--- Fim dos Logs ---"
             exit 1
 
         - name: Run Playwright tests

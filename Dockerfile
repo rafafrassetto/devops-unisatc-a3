@@ -15,4 +15,4 @@ RUN /usr/bin/env node ./scripts/seed.js || true
 
 EXPOSE 1337
 
-CMD ["npm", "start"]
+CMD ["npm", "run", "start:ci"]
