@@ -275,6 +275,7 @@ resource "aws_lb" "strapi_alb" {
   }
 }
 
+
 resource "aws_lb_target_group" "strapi_tg" {
   name     = "strapi-tg"
   port     = 1337
