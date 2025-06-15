@@ -37,6 +37,7 @@
     "src/admin/",
     // Do not include test files
     "**/*.test.*",
+    "e2e-tests/",
     // Do not include plugins in the server compilation
     "src/plugins/**"
   ]
