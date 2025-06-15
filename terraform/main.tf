@@ -280,6 +280,8 @@ resource "aws_lb_target_group" "strapi_tg" {
   port     = 1337
   protocol = "HTTP"
   vpc_id   = aws_vpc.strapi_vpc.id
+  target_type = "ip"
+  
   health_check {
     path = "/admin"
     protocol = "HTTP"
