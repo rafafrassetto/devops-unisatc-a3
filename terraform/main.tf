@@ -180,7 +180,7 @@ resource "aws_ecs_cluster" "strapi_cluster" { # Mantém o nome do recurso
 # ------------------------------------------------------------------------------------------------
 
 resource "aws_ecs_task_definition" "strapi_task" { # Mantém o nome do recurso
-  family                 = "html-app-task-v4" # <--- NOVO NOME DE FAMÍLIA DE TASK
+  family                 = "html-app-task-v5" # <--- NOVO NOME DE FAMÍLIA DE TASK
   cpu                    = "256" # <--- CPU REDUZIDA PARA HTML
   memory                 = "512" # <--- MEMÓRIA REDUZIDA PARA HTML
   network_mode           = "awsvpc"
@@ -223,7 +223,7 @@ resource "aws_ecs_task_definition" "strapi_task" { # Mantém o nome do recurso
 # ------------------------------------------------------------------------------------------------
 
 resource "aws_ecs_service" "strapi_service" { # Mantém o nome do recurso
-  name            = "html-app-service" # <--- NOVO NOME DO SERVIÇO
+  name            = "html-app-service-v2" # <--- NOVO NOME DO SERVIÇO
   cluster         = aws_ecs_cluster.strapi_cluster.id
   task_definition = aws_ecs_task_definition.strapi_task.arn
   desired_count   = 1 # Uma instância do HTML APP rodando
@@ -245,7 +245,7 @@ resource "aws_ecs_service" "strapi_service" { # Mantém o nome do recurso
   depends_on = [aws_lb_listener.strapi_http_listener]
 
   tags = {
-    Name = "html-app-service" # Tag atualizado
+    Name = "html-app-service-v2" # Tag atualizado
   }
 }
 
