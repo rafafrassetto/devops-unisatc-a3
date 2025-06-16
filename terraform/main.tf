@@ -12,7 +12,7 @@ resource "aws_vpc" "strapi_vpc" { # Mantém o nome do recurso para não recriar 
   enable_dns_hostnames = true
   enable_dns_support   = true
   tags = {
-    Name = "strapi-vpc" # Nome do tag pode ser mantido ou alterado para 'html-app-vpc'
+    Name = "html-app-vpc" # Nome do tag pode ser mantido ou alterado para 'html-app-vpc'
   }
 }
 
@@ -180,7 +180,7 @@ resource "aws_ecs_cluster" "strapi_cluster" { # Mantém o nome do recurso
 # ------------------------------------------------------------------------------------------------
 
 resource "aws_ecs_task_definition" "strapi_task" { # Mantém o nome do recurso
-  family                 = "html-app-task-v3" # <--- NOVO NOME DE FAMÍLIA DE TASK
+  family                 = "html-app-task-v4" # <--- NOVO NOME DE FAMÍLIA DE TASK
   cpu                    = "256" # <--- CPU REDUZIDA PARA HTML
   memory                 = "512" # <--- MEMÓRIA REDUZIDA PARA HTML
   network_mode           = "awsvpc"
