@@ -45,4 +45,5 @@ steps:
     echo "html_app_alb_dns_name=$ALB_DNS" >> $GITHUB_OUTPUT
 
 - name: Mostrar URL da Aplicação
-  run: echo "Sua aplicação HTML está disponível em: http://${{ steps.get_alb_dns.outputs.html_app_alb_dns_name }}"
+  run: |
+    echo "Sua aplicação HTML está disponível em: http://${{ steps.get_alb_dns.outputs.html_app_alb_dns_name }}"
