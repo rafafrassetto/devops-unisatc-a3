@@ -11,38 +11,38 @@ jobs:
     environment: production
 
 steps:
-  - name: Checkout do Código
-    uses: actions/checkout@v4
+- name: Checkout do Código
+  uses: actions/checkout@v4
 
-  - name: Configurar AWS CLI
-    uses: aws-actions/configure-aws-credentials@v4
-    with:
-      aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      aws-region: us-east-1
+- name: Configurar AWS CLI
+  uses: aws-actions/configure-aws-credentials@v4
+  with:
+    aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    aws-region: us-east-1
 
-  - name: Configurar Terraform
-    uses: hashicorp/setup-terraform@v3
-    with:
-      terraform_version: 1.x.x
+- name: Configurar Terraform
+  uses: hashicorp/setup-terraform@v3
+  with:
+    terraform_version: 1.x.x
 
-  - name: Mudar para o diretório do Terraform
-    run: |
-      if [ -d "terraform" ]; then
-        cd terraform
-      fi
+- name: Mudar para o diretório do Terraform
+  run: |
+    if [ -d "terraform" ]; then
+      cd terraform
+    fi
 
-  - name: Terraform Init
-    run: terraform init
+- name: Terraform Init
+  run: terraform init
 
-  - name: Terraform Apply
-    run: terraform apply -auto-approve -var="docker_image=${{ secrets.DOCKER_HUB_USERNAME }}/html-app:latest"
+- name: Terraform Apply
+  run: terraform apply -auto-approve -var="docker_image=${{ secrets.DOCKER_HUB_USERNAME }}/html-app:latest"
 
-  - name: Obter o DNS do ALB (output do Terraform)
-    id: get_alb_dns
-    run: |
-      ALB_DNS=$(terraform output -raw html_app_alb_dns_name)
-      echo "html_app_alb_dns_name=$ALB_DNS" >> $GITHUB_OUTPUT
+- name: Obter o DNS do ALB (output do Terraform)
+  id: get_alb_dns
+  run: |
+    ALB_DNS=$(terraform output -raw html_app_alb_dns_name)
+    echo "html_app_alb_dns_name=$ALB_DNS" >> $GITHUB_OUTPUT
 
-  - name: Mostrar URL da Aplicação
-    run: echo "Sua aplicação HTML está disponível em: http://${{ steps.get_alb_dns.outputs.html_app_alb_dns_name }}"
+- name: Mostrar URL da Aplicação
+  run: echo "Sua aplicação HTML está disponível em: http://${{ steps.get_alb_dns.outputs.html_app_alb_dns_name }}"
