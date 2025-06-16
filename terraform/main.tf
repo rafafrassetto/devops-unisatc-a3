@@ -180,7 +180,7 @@ resource "aws_ecs_cluster" "strapi_cluster" { # Mantém o nome do recurso
 # ------------------------------------------------------------------------------------------------
 
 resource "aws_ecs_task_definition" "strapi_task" { # Mantém o nome do recurso
-  family                 = "html-app-task-v2" # <--- NOVO NOME DE FAMÍLIA DE TASK
+  family                 = "html-app-task-v3" # <--- NOVO NOME DE FAMÍLIA DE TASK
   cpu                    = "256" # <--- CPU REDUZIDA PARA HTML
   memory                 = "512" # <--- MEMÓRIA REDUZIDA PARA HTML
   network_mode           = "awsvpc"
@@ -214,7 +214,7 @@ resource "aws_ecs_task_definition" "strapi_task" { # Mantém o nome do recurso
     }
   ])
   tags = {
-    Name = "html-app-task-definition-v2" # Tag atualizado
+    Name = "html-app-task-definition-v3" # Tag atualizado
   }
 }
 
