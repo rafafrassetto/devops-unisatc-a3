@@ -1,8 +1,6 @@
 # Define o provedor AWS e a região
 provider "aws" {
-  region     = "us-east-1" # Usando North Virginia
-  access_key = var.aws_access_key
-  secret_key = var.aws_secret_key
+  region     = "us-east-1"
 }
 
 # ------------------------------------------------------------------------------------------------
