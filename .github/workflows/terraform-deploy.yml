@@ -25,7 +25,7 @@ jobs:
         with:
           terraform_version: 1.x.x
 
-      - name: Mudar para o diretório do Terraform
+      - name: Mudar para o diretório do Terraform #
         run: |
           if [ -d "terraform" ]; then
             cd terraform
