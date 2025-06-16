@@ -10,5 +10,5 @@ test('has title and welcome message', async ({ page }) => {
 
   await expect(page.locator('p').first()).toHaveText('Esta é a sua aplicação de teste para o A3 de DevOps.');
 
-  await expect(page.locator('p').nth(2)).toHaveText('Equipe : Rafael Frassetto Pereira');
+  await expect(page.locator('p').nth(2)).toHaveText('Equipe : Rafael Frassetto Pereira, João Gabriel Rosso, João Acordi, Tiago Salles Melo');
 });
