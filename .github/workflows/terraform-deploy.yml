@@ -25,20 +25,18 @@ jobs:
         with:
           terraform_version: 1.x.x
 
-      - name: Mudar para o diretório do Terraform #
-        run: |
-          if [ -d "terraform" ]; then
-            cd terraform
-          fi
 
       - name: Terraform Init
+        working-directory: terraform
         run: terraform init
 
       - name: Terraform Apply
+        working-directory: terraform
         run: terraform apply -auto-approve -var="docker_image=${{ secrets.DOCKER_HUB_USERNAME }}/html-app:latest"
 
       - name: Obter o DNS do ALB (output do Terraform)
         id: get_alb_dns
+        working-directory: terraform
         run: |
           ALB_DNS=$(terraform output -raw html_app_alb_dns_name)
           echo "html_app_alb_dns_name=$ALB_DNS" >> $GITHUB_OUTPUT
