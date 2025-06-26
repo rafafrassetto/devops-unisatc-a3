@@ -29,7 +29,7 @@ Assista à apresentação completa do projeto para entender o contexto, os desaf
 [**Ver Apresentação (Link do Vídeo)**](https://www.youtube.com/watch?v=ic4wmWj3z58&ab_channel=rafafrassetto)
 *(Observação: O link do vídeo fornecido parece ser um placeholder ou está inacessível. Por favor, verifique o link correto para a sua apresentação.)*
 
-## 🌐 Site em Deploy
+## 🌐 Site em Deploy  
 
 Confira a aplicação em funcionamento, resultado do nosso processo de deploy automatizado:
 
